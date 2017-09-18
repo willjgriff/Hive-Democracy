@@ -4,8 +4,8 @@ import "./token/MiniMeToken.sol";
 
 /**
  * @title DelegationProxy
- * @author Ricardo Guilherme Schmidt
- * Create a delegation proxy to MiniMeTokens that store checkpoints from all changes and parent proxy. 
+ * @author Ricardo Guilherme Schmidt (Status Research & Development GmbH)
+ * Create a delegation proxy to MiniMeTokens that store checkpoints from all changes and parent proxy to fall back in case of no delegation at this level. 
  */
 contract DelegationProxy {
     
@@ -52,7 +52,7 @@ contract DelegationProxy {
             if (address(parentProxy) != 0x0) {
                 return parentProxy.delegatedInfluenceFromAt(_who, _token, _block);
             } else {
-                return; 
+                return 0; 
             }
         }
         Delegation memory d = _getMemoryAt(checkpoints, _block);
@@ -102,8 +102,10 @@ contract DelegationProxy {
     }   
 
     /** 
-     * @notice changes the delegation of an account, if _to 0x00: self delegation (become voter)
-     * @param _to to what address the caller address will delegate to?
+     * @notice changes the delegation of an account, if _to 0x00: delegate to self. 
+     * In case of having a parent proxy, if never defined, fall back to parent proxy. 
+     * If once defined and want to delegate to parent proxy, set `_to` as parent address. 
+     * @param _to to what address the caller address will delegate to? 
      */
     function delegate(address _to) {
         require(delegationOfAt(_to, block.number) != msg.sender); //block impossible circular delegation
