@@ -1,6 +1,6 @@
 pragma solidity ^0.4.10;
 
-import "./Controlled.sol";
+import "../Controlled.sol";
 import "./DelegationProxy.sol";
 
 /**

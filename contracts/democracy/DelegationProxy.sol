@@ -1,6 +1,6 @@
 pragma solidity ^0.4.11;
 
-import "./token/MiniMeToken.sol";
+import "../token/MiniMeToken.sol";
 
 /**
  * @title DelegationProxy
