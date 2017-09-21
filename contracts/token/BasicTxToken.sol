@@ -61,7 +61,9 @@ contract BasicTxToken {
     {
         require(allowed[_from][msg.sender] >= _value);
         allowed[_from][msg.sender] -= _value;
-        return transfer(_from, _to, _value) != 0x0;
+        // TODO: Requires a transferFrom function, should be the below statement.
+//        return transfer(_from, _to, _value) != 0x0;
+        return transfer(_to, _value);
     }
 
     function approve(address _spender, uint256 _value)
@@ -88,7 +90,7 @@ contract BasicTxToken {
         require(balanceOf[_from] >= _value);
         Transfer(_from, _to, _value);
         tokentxid = keccak256(block.number, _from, _to, _value);
-        Transfer(_from, _to, _value, tokentxid);
+        Transfer(_from, _to, _value, new bytes(1), tokentxid);
         balanceOf[_from] -= _value;
         balanceOf[_to] += _value;
         transactions[tokentxid] = Transaction({from: _from, to: _to, value: _value, data: _data });   
