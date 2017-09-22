@@ -38,7 +38,7 @@ contract DelegationProxy {
         }
         Delegation memory d = _getMemoryAt(checkpoints, _block);
         // Case user set delegation to parentProxy;
-        if (d.to == address(parentProxy)) {
+        if (d.to == address(parentProxy) && address(parentProxy) != 0x0) {
            return parentProxy.delegatedToAt(_who, _block); 
         }
         return d.to;
@@ -57,7 +57,7 @@ contract DelegationProxy {
         }
         Delegation memory d = _getMemoryAt(checkpoints, _block);
         // Case user set delegation to parentProxy;
-        if (d.to == address(parentProxy)) {
+        if (d.to == address(parentProxy) && address(parentProxy) != 0x0) {
            return parentProxy.delegatedInfluenceFromAt(_who, _token, _block); 
         }
 
@@ -177,6 +177,8 @@ contract DelegationProxy {
         uint toHistLen = toHistory.length;
         if (toHistLen > 0) {
             _newTo = toHistory[toHistLen - 1];
+        } else { 
+            _newTo.to = address(parentProxy);
         }
         _newTo.fromBlock = uint128(block.number);
         _toIndex = _newTo.from.length; //link to index
