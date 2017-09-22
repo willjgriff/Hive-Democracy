@@ -1,24 +1,4 @@
 library/
 
 .idea
-build/contracts/ApproveAndCallFallBack.json
-build/contracts/BasicTxToken.json
-build/contracts/Constitution.json
-build/contracts/Controlled.json
-build/contracts/DelegatedCall.json
-build/contracts/DelegationNetwork.json
-build/contracts/DelegationProxy.json
-build/contracts/ERC20.json
-build/contracts/ERC223.json
-build/contracts/ERC223Receiver.json
-build/contracts/Hive.json
-build/contracts/Honeycomb.json
-build/contracts/LibraryReg.json
-build/contracts/LiveFactory.json
-build/contracts/MiniMeToken.json
-build/contracts/MiniMeTokenFactory.json
-build/contracts/ProposalManager.json
-build/contracts/Queen.json
-build/contracts/SimplePoll.json
-build/contracts/TokenController.json
-build/contracts/TokenLedger.json
+build/
