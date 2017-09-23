@@ -25,7 +25,7 @@ contract DelegationProxy {
         parentProxy = DelegationProxy(_parentProxy);
     }
     
-    function delegatedToAt(address _who, uint _block) returns (address addr) {
+    function delegatedToAt(address _who, uint _block) constant returns (address addr) {
         Delegation[] storage checkpoints = delegations[_who];
 
         //In case there is no registry
@@ -33,7 +33,7 @@ contract DelegationProxy {
             if (address(parentProxy) != 0x0) {
                 return parentProxy.delegatedToAt(_who, _block);
             } else {
-                return; 
+                return 0x0; 
             }
         }
         Delegation memory d = _getMemoryAt(checkpoints, _block);
@@ -64,7 +64,7 @@ contract DelegationProxy {
         uint _len = d.from.length;
         for (uint256 i = 0; _len > i; i++) {
             address _from = d.from[i];
-            _total = MiniMeToken(_token).balanceOfAt(_from, _block); // source of _who votes
+            _total += MiniMeToken(_token).balanceOfAt(_from, _block); // source of _who votes
             _total += delegatedInfluenceFromAt(_from, _token, _block); //sum the from delegation votes
         }
             
@@ -93,18 +93,18 @@ contract DelegationProxy {
      * @return amount of votes
      */
     function influenceOfAt(address _who, MiniMeToken _token, uint _block) constant returns(uint256 _total) {
-        if (delegationOfAt(_who, _block) == 0x0) { //is endpoint of delegation?
+        if (delegationOfAt(_who, _block) == _who) { //is endpoint of delegation?
             _total = MiniMeToken(_token).balanceOfAt(_who, _block); // source of _who votes
             _total += delegatedInfluenceFromAt(_who, _token, _block); //calcule the votes delegated to _who
         } else { 
-            _total = 0; //no influence because were delegated
+           _total = 0; //no influence because were delegated
         }
     }   
 
     /** 
      * @notice changes the delegation of an account, if _to 0x00: delegate to self. 
      * In case of having a parent proxy, if never defined, fall back to parent proxy. 
-     * If once defined and want to delegate to parent proxy, set `_to` as parent address. 
+    * If once defined and want to delegate to parent proxy, set `_to` as parent address. 
      * @param _to to what address the caller address will delegate to? 
      */
     function delegate(address _to) {
