@@ -45,12 +45,20 @@ contract DelegationProxy {
     }
 
     function delegatedInfluenceFromAt(address _who, address _token, uint _block) constant returns(uint256 _total) {
+        return delegatedInfluenceFromAt(_who, _token, _block, 0x0);
+    }
+
+    function delegatedInfluenceFromAt(address _who, address _token, uint _block, address _childProxy) constant returns(uint256 _total) {
         Delegation[] storage checkpoints = delegations[_who];
+        
+        if (_childProxy == 0) {
+            _childProxy = address(this);
+        }
 
         //In case there is no registry
         if (checkpoints.length == 0) {
             if (address(parentProxy) != 0x0) {
-                return parentProxy.delegatedInfluenceFromAt(_who, _token, _block);
+                return parentProxy.delegatedInfluenceFromAt(_who, _token, _block, _childProxy);
             } else {
                 return 0; 
             }
@@ -58,14 +66,14 @@ contract DelegationProxy {
         Delegation memory d = _getMemoryAt(checkpoints, _block);
         // Case user set delegation to parentProxy;
         if (d.to == address(parentProxy) && address(parentProxy) != 0x0) {
-           return parentProxy.delegatedInfluenceFromAt(_who, _token, _block); 
+           return parentProxy.delegatedInfluenceFromAt(_who, _token, _block, _childProxy); 
         }
-
+ 
         uint _len = d.from.length;
         for (uint256 i = 0; _len > i; i++) {
             address _from = d.from[i];
             _total += MiniMeToken(_token).balanceOfAt(_from, _block); // source of _who votes
-            _total += delegatedInfluenceFromAt(_from, _token, _block); //sum the from delegation votes
+            _total += DelegationProxy(_childProxy).delegatedInfluenceFromAt(_from, _token, _block, 0x0); //sum the from delegation votes
         }
             
     }
