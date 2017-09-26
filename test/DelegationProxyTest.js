@@ -76,205 +76,209 @@ contract("DelegationProxy", accounts => {
     describe("scenarios", ()  => {
 
         let miniMeToken
-        const member1 = accounts[0]
-        const member2 = accounts[1]
-        const member3 = accounts[2]
-        const member4 = accounts[3]
-        const member5 = accounts[4]
-        const member6 = accounts[5]
         const tokenBalance = 1000
+
         before(async () => {   
             miniMeToken = await MiniMeToken.new(miniMeTokenFactory.address, 0, 0, "TestToken", 18, "TTN", true)
-            miniMeToken.generateTokens(member1, tokenBalance)
-            miniMeToken.generateTokens(member2, tokenBalance)
-            miniMeToken.generateTokens(member3, tokenBalance)
-            miniMeToken.generateTokens(member4, tokenBalance)
-            miniMeToken.generateTokens(member5, tokenBalance)
-            await miniMeToken.generateTokens(member6, tokenBalance)
+            miniMeToken.generateTokens(accounts[0], tokenBalance)
+            miniMeToken.generateTokens(accounts[1], tokenBalance)
+            miniMeToken.generateTokens(accounts[2], tokenBalance)
+            miniMeToken.generateTokens(accounts[3], tokenBalance)
+            miniMeToken.generateTokens(accounts[4], tokenBalance)
+            await miniMeToken.generateTokens(accounts[5], tokenBalance)
 
         });
 
 
         describe("delegation multilevel scenario", () => {
-            let Lv1delegationProxy
-            let Lv2delegationProxy
-            const Lv1delegateTo1 = member2
-            const Lv1delegateTo2 = member3
-            const Lv1delegateTo3 = 0x0
 
-            const Lv2delegateTo1 = 0x0
-            const Lv2delegateTo2 = member3
-            const Lv2delegateTo3 = 0x0
+            let delegationProxy = []
+            const delegateTo = [
+                [
+                    accounts[1],
+                    accounts[2],
+                    0x0],
+                [
+                    0x0,
+                    accounts[2],
+                    0x0]
+                ]
         
             before(async () => {
-                Lv1delegationProxy = await DelegationProxy.new(0)
-                Lv1delegationProxy.delegate(Lv1delegateTo1, {from: member1})
-                Lv1delegationProxy.delegate(Lv1delegateTo2, {from: member2})
-                Lv1delegationProxy.delegate(Lv1delegateTo3, {from: member3})
+                delegationProxy[0] = await DelegationProxy.new(0)
+                delegationProxy[0].delegate(delegateTo[0][0], {from: accounts[0]})
+                delegationProxy[0].delegate(delegateTo[0][1], {from: accounts[1]})
+                delegationProxy[0].delegate(delegateTo[0][2], {from: accounts[2]})
 
-                Lv2delegationProxy = await DelegationProxy.new(Lv1delegationProxy.address)
-                Lv2delegationProxy.delegate(Lv2delegateTo1, {from: member1})
-                Lv2delegationProxy.delegate(Lv2delegateTo2, {from: member2})
-                Lv2delegationProxy.delegate(Lv2delegateTo3, {from: member3})
+                delegationProxy[1] = await DelegationProxy.new(delegationProxy[0].address)
+                delegationProxy[1].delegate(delegateTo[1][0], {from: accounts[0]})
+                delegationProxy[1].delegate(delegateTo[1][1], {from: accounts[1]})
+                delegationProxy[1].delegate(delegateTo[1][2], {from: accounts[2]})
      
             })
 
             it("returns expected delegatedToAt", async () => {
-                const Lv1delegatedTo1 = await Lv1delegationProxy.delegatedToAt(member1, web3.eth.blockNumber)
-                const Lv1delegatedTo2 = await Lv1delegationProxy.delegatedToAt(member2, web3.eth.blockNumber)
-                const Lv1delegatedTo3 = await Lv1delegationProxy.delegatedToAt(member3, web3.eth.blockNumber)
-                const Lv2delegatedTo1 = await Lv2delegationProxy.delegatedToAt(member1, web3.eth.blockNumber)
-                const Lv2delegatedTo2 = await Lv2delegationProxy.delegatedToAt(member2, web3.eth.blockNumber)
-                const Lv2delegatedTo3 = await Lv2delegationProxy.delegatedToAt(member3, web3.eth.blockNumber)
+                let delegatedTo = [[],[]]
+                delegatedTo[0][0] = await delegationProxy[0].delegatedToAt(accounts[0], web3.eth.blockNumber)
+                delegatedTo[0][1] = await delegationProxy[0].delegatedToAt(accounts[1], web3.eth.blockNumber)
+                delegatedTo[0][2] = await delegationProxy[0].delegatedToAt(accounts[2], web3.eth.blockNumber)
+                delegatedTo[1][0] = await delegationProxy[1].delegatedToAt(accounts[0], web3.eth.blockNumber)
+                delegatedTo[1][1] = await delegationProxy[1].delegatedToAt(accounts[1], web3.eth.blockNumber)
+                delegatedTo[1][2] = await delegationProxy[1].delegatedToAt(accounts[2], web3.eth.blockNumber)
                 
-                assert.equal(Lv1delegatedTo1, Lv1delegateTo1, "Lv1.delegatedToAt(member1 is not as expected")
-                assert.equal(Lv1delegatedTo2, Lv1delegateTo2, "Lv1.delegatedToAt(member2 is not as expected")
-                assert.equal(Lv1delegatedTo3, Lv1delegateTo3, "Lv1.delegatedToAt(member3 is not as expected")
-                assert.equal(Lv2delegatedTo1, Lv2delegateTo1, "Lv2.delegatedToAt(member1 is not as expected")
-                assert.equal(Lv2delegatedTo2, Lv2delegateTo2, "Lv2.delegatedToAt(member2 is not as expected")
-                assert.equal(Lv2delegatedTo3, Lv2delegateTo3, "Lv2.delegatedToAt(member3 is not as expected")
+                assert.equal(delegatedTo[0][0], delegateTo[0][0], "delegationProxy[0].delegatedToAt(accounts[0] is not as expected")
+                assert.equal(delegatedTo[0][1], delegateTo[0][1], "delegationProxy[0].delegatedToAt(accounts[1] is not as expected")
+                assert.equal(delegatedTo[0][2], delegateTo[0][2], "delegationProxy[0].delegatedToAt(accounts[2] is not as expected")
+                assert.equal(delegatedTo[1][0], delegateTo[1][0], "delegationProxy[1].delegatedToAt(accounts[0] is not as expected")
+                assert.equal(delegatedTo[1][1], delegateTo[1][1], "delegationProxy[1].delegatedToAt(accounts[1] is not as expected")
+                assert.equal(delegatedTo[1][2], delegateTo[1][2], "delegationProxy[1].delegatedToAt(accounts[2] is not as expected")
             })
             
             it("returns expected delegationOfAt", async () => {
-                const Lv1delegationOf1 = await Lv1delegationProxy.delegationOfAt(member1, web3.eth.blockNumber)
-                const Lv1delegationOf2 = await Lv1delegationProxy.delegationOfAt(member2, web3.eth.blockNumber)
-                const Lv1delegationOf3 = await Lv1delegationProxy.delegationOfAt(member3, web3.eth.blockNumber)
-                const Lv2delegationOf1 = await Lv2delegationProxy.delegationOfAt(member1, web3.eth.blockNumber)
-                const Lv2delegationOf2 = await Lv2delegationProxy.delegationOfAt(member2, web3.eth.blockNumber)
-                const Lv2delegationOf3 = await Lv2delegationProxy.delegationOfAt(member3, web3.eth.blockNumber)
+                let delegationOf = [[],[]]
+                delegationOf[0][0] = await delegationProxy[0].delegationOfAt(accounts[0], web3.eth.blockNumber)
+                delegationOf[0][1] = await delegationProxy[0].delegationOfAt(accounts[1], web3.eth.blockNumber)
+                delegationOf[0][2] = await delegationProxy[0].delegationOfAt(accounts[2], web3.eth.blockNumber)
+                delegationOf[1][0] = await delegationProxy[1].delegationOfAt(accounts[0], web3.eth.blockNumber)
+                delegationOf[1][1] = await delegationProxy[1].delegationOfAt(accounts[1], web3.eth.blockNumber)
+                delegationOf[1][2] = await delegationProxy[1].delegationOfAt(accounts[2], web3.eth.blockNumber)
                 
-                assert.equal(Lv1delegationOf1, member3, "Lv1.delegationOfAt(member1 is not as expected")
-                assert.equal(Lv1delegationOf2, member3, "Lv1.delegationOfAt(member2 is not as expected")
-                assert.equal(Lv1delegationOf3, member3, "Lv1.delegationOfAt(member3 is not as expected")
-                assert.equal(Lv2delegationOf1, member1, "Lv2.delegationOfAt(member1 is not as expected")
-                assert.equal(Lv2delegationOf2, member3, "Lv2.delegationOfAt(member2 is not as expected")
-                assert.equal(Lv2delegationOf3, member3, "Lv2.delegationOfAt(member3 is not as expected")
+                assert.equal(delegationOf[0][0], accounts[2], "delegationProxy[0].delegationOfAt(accounts[0] is not as expected")
+                assert.equal(delegationOf[0][1], accounts[2], "delegationProxy[0].delegationOfAt(accounts[1] is not as expected")
+                assert.equal(delegationOf[0][2], accounts[2], "delegationProxy[0].delegationOfAt(accounts[2] is not as expected")
+                assert.equal(delegationOf[1][0], accounts[0], "delegationProxy[1].delegationOfAt(accounts[0] is not as expected")
+                assert.equal(delegationOf[1][1], accounts[2], "delegationProxy[1].delegationOfAt(accounts[1] is not as expected")
+                assert.equal(delegationOf[1][2], accounts[2], "delegationProxy[1].delegationOfAt(accounts[2] is not as expected")
                             
             })
 
             it("returns expected delegatedInfluenceFromAt", async () => {
                 
-                const Lv1delegatedInfluence1 = await Lv1delegationProxy.delegatedInfluenceFromAt(member1, miniMeToken.address, web3.eth.blockNumber)
-                const Lv1delegatedInfluence2 = await Lv1delegationProxy.delegatedInfluenceFromAt(member2, miniMeToken.address, web3.eth.blockNumber)
-                const Lv1delegatedInfluence3 = await Lv1delegationProxy.delegatedInfluenceFromAt(member3, miniMeToken.address, web3.eth.blockNumber)
-                const Lv2delegatedInfluence1 = await Lv2delegationProxy.delegatedInfluenceFromAt(member1, miniMeToken.address, web3.eth.blockNumber)
-                const Lv2delegatedInfluence2 = await Lv2delegationProxy.delegatedInfluenceFromAt(member2, miniMeToken.address, web3.eth.blockNumber)
-                const Lv2delegatedInfluence3 = await Lv2delegationProxy.delegatedInfluenceFromAt(member3, miniMeToken.address, web3.eth.blockNumber)
+                let delegatedInfluence = [[],[]]
+                delegatedInfluence[0][0] = await delegationProxy[0].delegatedInfluenceFromAt(accounts[0], miniMeToken.address, web3.eth.blockNumber)
+                delegatedInfluence[0][1] = await delegationProxy[0].delegatedInfluenceFromAt(accounts[1], miniMeToken.address, web3.eth.blockNumber)
+                delegatedInfluence[0][2] = await delegationProxy[0].delegatedInfluenceFromAt(accounts[2], miniMeToken.address, web3.eth.blockNumber)
+                delegatedInfluence[1][0] = await delegationProxy[1].delegatedInfluenceFromAt(accounts[0], miniMeToken.address, web3.eth.blockNumber)
+                delegatedInfluence[1][1] = await delegationProxy[1].delegatedInfluenceFromAt(accounts[1], miniMeToken.address, web3.eth.blockNumber)
+                delegatedInfluence[1][2] = await delegationProxy[1].delegatedInfluenceFromAt(accounts[2], miniMeToken.address, web3.eth.blockNumber)
                 
-                assert.equal(Lv1delegatedInfluence1.toNumber(), 0 * tokenBalance, "Lv1.delegatedInfluenceFrom(member1 is not as expected")
-                assert.equal(Lv1delegatedInfluence2.toNumber(), 1 * tokenBalance, "Lv1.delegatedInfluenceFrom(member2 is not as expected")
-                assert.equal(Lv1delegatedInfluence3.toNumber(), 2 * tokenBalance, "Lv1.delegatedInfluenceFrom(member3 is not as expected")
-                assert.equal(Lv2delegatedInfluence1.toNumber(), 0 * tokenBalance, "Lv2.delegatedInfluenceFrom(member1 is not as expected")
-                assert.equal(Lv2delegatedInfluence2.toNumber(), 0 * tokenBalance, "Lv2.delegatedInfluenceFrom(member2 is not as expected")
-                assert.equal(Lv2delegatedInfluence3.toNumber(), 1 * tokenBalance, "Lv2.delegatedInfluenceFrom(member3 is not as expected")
+                assert.equal(delegatedInfluence[0][0].toNumber(), 0 * tokenBalance, "delegationProxy[0].delegatedInfluenceFrom(accounts[0] is not as expected")
+                assert.equal(delegatedInfluence[0][1].toNumber(), 1 * tokenBalance, "delegationProxy[0].delegatedInfluenceFrom(accounts[1] is not as expected")
+                assert.equal(delegatedInfluence[0][2].toNumber(), 2 * tokenBalance, "delegationProxy[0].delegatedInfluenceFrom(accounts[2] is not as expected")
+                assert.equal(delegatedInfluence[1][0].toNumber(), 0 * tokenBalance, "delegationProxy[1].delegatedInfluenceFrom(accounts[0] is not as expected")
+                assert.equal(delegatedInfluence[1][1].toNumber(), 0 * tokenBalance, "delegationProxy[1].delegatedInfluenceFrom(accounts[1] is not as expected")
+                assert.equal(delegatedInfluence[1][2].toNumber(), 1 * tokenBalance, "delegationProxy[1].delegatedInfluenceFrom(accounts[2] is not as expected")
             })
             
             it("returns expected influenceOfAt", async () => {
     
-                const Lv1influence1 = await Lv1delegationProxy.influenceOfAt(member1, miniMeToken.address, web3.eth.blockNumber)
-                const Lv1influence2 = await Lv1delegationProxy.influenceOfAt(member2, miniMeToken.address, web3.eth.blockNumber)
-                const Lv1influence3 = await Lv1delegationProxy.influenceOfAt(member3, miniMeToken.address, web3.eth.blockNumber)
-                const Lv2influence1 = await Lv2delegationProxy.influenceOfAt(member1, miniMeToken.address, web3.eth.blockNumber)
-                const Lv2influence2 = await Lv2delegationProxy.influenceOfAt(member2, miniMeToken.address, web3.eth.blockNumber)
-                const Lv2influence3 = await Lv2delegationProxy.influenceOfAt(member3, miniMeToken.address, web3.eth.blockNumber)
+                let influence = [[],[]]
+                influence[0][0] = await delegationProxy[0].influenceOfAt(accounts[0], miniMeToken.address, web3.eth.blockNumber)
+                influence[0][1] = await delegationProxy[0].influenceOfAt(accounts[1], miniMeToken.address, web3.eth.blockNumber)
+                influence[0][2] = await delegationProxy[0].influenceOfAt(accounts[2], miniMeToken.address, web3.eth.blockNumber)
+                influence[1][0] = await delegationProxy[1].influenceOfAt(accounts[0], miniMeToken.address, web3.eth.blockNumber)
+                influence[1][1] = await delegationProxy[1].influenceOfAt(accounts[1], miniMeToken.address, web3.eth.blockNumber)
+                influence[1][2] = await delegationProxy[1].influenceOfAt(accounts[2], miniMeToken.address, web3.eth.blockNumber)
                 
-                assert.equal(Lv1influence1.toNumber(), 0 * tokenBalance, "Lv1.influenceOfAt(member1 is not as expected")
-                assert.equal(Lv1influence2.toNumber(), 0 * tokenBalance, "Lv1.influenceOfAt(member2 is not as expected")
-                assert.equal(Lv1influence3.toNumber(), 3 * tokenBalance, "Lv1.influenceOfAt(member3 is not as expected")
-                assert.equal(Lv2influence1.toNumber(), 1 * tokenBalance, "Lv2.influenceOfAt(member1 is not as expected")
-                assert.equal(Lv2influence2.toNumber(), 0 * tokenBalance, "Lv2.influenceOfAt(member2 is not as expected")
-                assert.equal(Lv2influence3.toNumber(), 2 * tokenBalance, "Lv2.influenceOfAt(member3 is not as expected")
+                assert.equal(influence[0][0].toNumber(), 0 * tokenBalance, "delegationProxy[0].influenceOfAt(accounts[0] is not as expected")
+                assert.equal(influence[0][1].toNumber(), 0 * tokenBalance, "delegationProxy[0].influenceOfAt(accounts[1] is not as expected")
+                assert.equal(influence[0][2].toNumber(), 3 * tokenBalance, "delegationProxy[0].influenceOfAt(accounts[2] is not as expected")
+                assert.equal(influence[1][0].toNumber(), 1 * tokenBalance, "delegationProxy[1].influenceOfAt(accounts[0] is not as expected")
+                assert.equal(influence[1][1].toNumber(), 0 * tokenBalance, "delegationProxy[1].influenceOfAt(accounts[1] is not as expected")
+                assert.equal(influence[1][2].toNumber(), 2 * tokenBalance, "delegationProxy[1].influenceOfAt(accounts[2] is not as expected")
             })
 
         });
 
         describe("simple delegation chain scenario", () => {
+
             let delegationProxy
-        
-            
-            const delegateTo1 = member2
-            const delegateTo2 = member3
-            const delegateTo3 = member6
-            const delegateTo4 = member6
-            const delegateTo5 = member6
-            const delegateTo6 = 0x0
+            const delegateTo = [ 
+                accounts[1],
+                accounts[2],
+                accounts[5],
+                accounts[5],
+                accounts[5],
+                0x0 ]
 
             before(async () => {
                 delegationProxy = await DelegationProxy.new(0)
 
-                delegationProxy.delegate(delegateTo1, {from: member1})
-                delegationProxy.delegate(delegateTo2, {from: member2})
-                delegationProxy.delegate(delegateTo3, {from: member3})
-                delegationProxy.delegate(delegateTo4, {from: member4})
-                delegationProxy.delegate(delegateTo5, {from: member5})
-                await delegationProxy.delegate(delegateTo6, {from: member6})
+                delegationProxy.delegate(delegateTo[0], {from: accounts[0]})
+                delegationProxy.delegate(delegateTo[1], {from: accounts[1]})
+                delegationProxy.delegate(delegateTo[2], {from: accounts[2]})
+                delegationProxy.delegate(delegateTo[3], {from: accounts[3]})
+                delegationProxy.delegate(delegateTo[4], {from: accounts[4]})
+                delegationProxy.delegate(delegateTo[5], {from: accounts[5]})
             })
     
             it("returns expected delegatedToAt", async () => {
-                const delegatedTo = await delegationProxy.delegatedToAt(member1, web3.eth.blockNumber)
-                const delegatedTo2 = await delegationProxy.delegatedToAt(member2, web3.eth.blockNumber)
-                const delegatedTo3 = await delegationProxy.delegatedToAt(member3, web3.eth.blockNumber)
-                const delegatedTo4 = await delegationProxy.delegatedToAt(member4, web3.eth.blockNumber)
-                const delegatedTo5 = await delegationProxy.delegatedToAt(member5, web3.eth.blockNumber)
-                const delegatedTo6 = await delegationProxy.delegatedToAt(member6, web3.eth.blockNumber)
+                let delegatedTo = []
+                delegatedTo[0] = await delegationProxy.delegatedToAt(accounts[0], web3.eth.blockNumber)
+                delegatedTo[1] = await delegationProxy.delegatedToAt(accounts[1], web3.eth.blockNumber)
+                delegatedTo[2] = await delegationProxy.delegatedToAt(accounts[2], web3.eth.blockNumber)
+                delegatedTo[3] = await delegationProxy.delegatedToAt(accounts[3], web3.eth.blockNumber)
+                delegatedTo[4] = await delegationProxy.delegatedToAt(accounts[4], web3.eth.blockNumber)
+                delegatedTo[5] = await delegationProxy.delegatedToAt(accounts[5], web3.eth.blockNumber)
                 
-                assert.equal(delegatedTo, delegateTo1, "delegatedToAt(member1 is not as expected")
-                assert.equal(delegatedTo2, delegateTo2, "delegatedToAt(member2 is not as expected")
-                assert.equal(delegatedTo3, delegateTo3, "delegatedToAt(member3 is not as expected")
-                assert.equal(delegatedTo4, delegateTo4, "delegatedToAt(member4 is not as expected")
-                assert.equal(delegatedTo5, delegateTo5, "delegatedToAt(member5 is not as expected")
-                assert.equal(delegatedTo6, delegateTo6, "delegatedToAt(member6 is not as expected")
+                assert.equal(delegatedTo[0], delegateTo[0], "delegatedToAt(accounts[0] is not as expected")
+                assert.equal(delegatedTo[1], delegateTo[1], "delegatedToAt(accounts[1] is not as expected")
+                assert.equal(delegatedTo[2], delegateTo[2], "delegatedToAt(accounts[2] is not as expected")
+                assert.equal(delegatedTo[3], delegateTo[3], "delegatedToAt(accounts[3] is not as expected")
+                assert.equal(delegatedTo[4], delegateTo[4], "delegatedToAt(accounts[4] is not as expected")
+                assert.equal(delegatedTo[5], delegateTo[5], "delegatedToAt(accounts[5] is not as expected")
             })
     
             it("returns expected delegationOfAt", async () => {
-                const delegationOf1 = await delegationProxy.delegationOfAt(member1, web3.eth.blockNumber)
-                const delegationOf2 = await delegationProxy.delegationOfAt(member2, web3.eth.blockNumber)
-                const delegationOf3 = await delegationProxy.delegationOfAt(member3, web3.eth.blockNumber)
-                const delegationOf4 = await delegationProxy.delegationOfAt(member4, web3.eth.blockNumber)
-                const delegationOf5 = await delegationProxy.delegationOfAt(member5, web3.eth.blockNumber)
-                const delegationOf6 = await delegationProxy.delegationOfAt(member6, web3.eth.blockNumber)
+                let delegationOf = []
+                delegationOf[0] = await delegationProxy.delegationOfAt(accounts[0], web3.eth.blockNumber)
+                delegationOf[1] = await delegationProxy.delegationOfAt(accounts[1], web3.eth.blockNumber)
+                delegationOf[2] = await delegationProxy.delegationOfAt(accounts[2], web3.eth.blockNumber)
+                delegationOf[3] = await delegationProxy.delegationOfAt(accounts[3], web3.eth.blockNumber)
+                delegationOf[4] = await delegationProxy.delegationOfAt(accounts[4], web3.eth.blockNumber)
+                delegationOf[5] = await delegationProxy.delegationOfAt(accounts[5], web3.eth.blockNumber)
                 
-                assert.equal(delegationOf1, member6, "delegationOfAt(member1 is not as expected")
-                assert.equal(delegationOf2, member6, "delegationOfAt(member2 is not as expected")
-                assert.equal(delegationOf3, member6, "delegationOfAt(member3 is not as expected")
-                assert.equal(delegationOf4, member6, "delegationOfAt(member4 is not as expected")
-                assert.equal(delegationOf5, member6, "delegationOfAt(member5 is not as expected")
-                assert.equal(delegationOf6, member6, "delegationOfAt(member6 is not as expected")
+                assert.equal(delegationOf[0], accounts[5], "delegationOfAt(accounts[0] is not as expected")
+                assert.equal(delegationOf[1], accounts[5], "delegationOfAt(accounts[1] is not as expected")
+                assert.equal(delegationOf[2], accounts[5], "delegationOfAt(accounts[2] is not as expected")
+                assert.equal(delegationOf[3], accounts[5], "delegationOfAt(accounts[3] is not as expected")
+                assert.equal(delegationOf[4], accounts[5], "delegationOfAt(accounts[4] is not as expected")
+                assert.equal(delegationOf[5], accounts[5], "delegationOfAt(accounts[5] is not as expected")
                             
             })
                 
             it("returns expected delegatedInfluenceFromAt", async () => {
+                let delegatedInfluenceFrom = []
+                delegatedInfluenceFrom[0] = await delegationProxy.delegatedInfluenceFromAt(accounts[0], miniMeToken.address, web3.eth.blockNumber)
+                delegatedInfluenceFrom[1] = await delegationProxy.delegatedInfluenceFromAt(accounts[1], miniMeToken.address, web3.eth.blockNumber)
+                delegatedInfluenceFrom[2] = await delegationProxy.delegatedInfluenceFromAt(accounts[2], miniMeToken.address, web3.eth.blockNumber)
+                delegatedInfluenceFrom[3] = await delegationProxy.delegatedInfluenceFromAt(accounts[3], miniMeToken.address, web3.eth.blockNumber)
+                delegatedInfluenceFrom[4] = await delegationProxy.delegatedInfluenceFromAt(accounts[4], miniMeToken.address, web3.eth.blockNumber)
+                delegatedInfluenceFrom[5] = await delegationProxy.delegatedInfluenceFromAt(accounts[5], miniMeToken.address, web3.eth.blockNumber)
                 
-                const delegatedInfluence1 = await delegationProxy.delegatedInfluenceFromAt(member1, miniMeToken.address, web3.eth.blockNumber)
-                const delegatedInfluence2 = await delegationProxy.delegatedInfluenceFromAt(member2, miniMeToken.address, web3.eth.blockNumber)
-                const delegatedInfluence3 = await delegationProxy.delegatedInfluenceFromAt(member3, miniMeToken.address, web3.eth.blockNumber)
-                const delegatedInfluence4 = await delegationProxy.delegatedInfluenceFromAt(member4, miniMeToken.address, web3.eth.blockNumber)
-                const delegatedInfluence5 = await delegationProxy.delegatedInfluenceFromAt(member5, miniMeToken.address, web3.eth.blockNumber)
-                const delegatedInfluence6 = await delegationProxy.delegatedInfluenceFromAt(member6, miniMeToken.address, web3.eth.blockNumber)
-                
-                assert.equal(delegatedInfluence1.toNumber(), 0 * tokenBalance, "delegatedInfluenceFrom(member1 is not as expected")
-                assert.equal(delegatedInfluence2.toNumber(), 1 * tokenBalance, "delegatedInfluenceFrom(member2 is not as expected")
-                assert.equal(delegatedInfluence3.toNumber(), 2 * tokenBalance, "delegatedInfluenceFrom(member3 is not as expected")
-                assert.equal(delegatedInfluence4.toNumber(), 0 * tokenBalance, "delegatedInfluenceFrom(member4 is not as expected")
-                assert.equal(delegatedInfluence5.toNumber(), 0 * tokenBalance, "delegatedInfluenceFrom(member5 is not as expected")
-                assert.equal(delegatedInfluence6.toNumber(), 5 * tokenBalance, "delegatedInfluenceFrom(member6 is not as expected")
+                assert.equal(delegatedInfluenceFrom[0].toNumber(), 0 * tokenBalance, "delegatedInfluenceFrom(accounts[0] is not as expected")
+                assert.equal(delegatedInfluenceFrom[1].toNumber(), 1 * tokenBalance, "delegatedInfluenceFrom(accounts[1] is not as expected")
+                assert.equal(delegatedInfluenceFrom[2].toNumber(), 2 * tokenBalance, "delegatedInfluenceFrom(accounts[2] is not as expected")
+                assert.equal(delegatedInfluenceFrom[3].toNumber(), 0 * tokenBalance, "delegatedInfluenceFrom(accounts[3] is not as expected")
+                assert.equal(delegatedInfluenceFrom[4].toNumber(), 0 * tokenBalance, "delegatedInfluenceFrom(accounts[4] is not as expected")
+                assert.equal(delegatedInfluenceFrom[5].toNumber(), 5 * tokenBalance, "delegatedInfluenceFrom(accounts[5] is not as expected")
             })
             
             it("returns expected influenceOfAt", async () => {
-    
-                const influence1 = await delegationProxy.influenceOfAt(member1, miniMeToken.address, web3.eth.blockNumber)
-                const influence2 = await delegationProxy.influenceOfAt(member2, miniMeToken.address, web3.eth.blockNumber)
-                const influence3 = await delegationProxy.influenceOfAt(member3, miniMeToken.address, web3.eth.blockNumber)
-                const influence4 = await delegationProxy.influenceOfAt(member4, miniMeToken.address, web3.eth.blockNumber)
-                const influence5 = await delegationProxy.influenceOfAt(member5, miniMeToken.address, web3.eth.blockNumber)
-                const influence6 = await delegationProxy.influenceOfAt(member6, miniMeToken.address, web3.eth.blockNumber)
+                let influence = []
+                influence[0] = await delegationProxy.influenceOfAt(accounts[0], miniMeToken.address, web3.eth.blockNumber)
+                influence[1] = await delegationProxy.influenceOfAt(accounts[1], miniMeToken.address, web3.eth.blockNumber)
+                influence[2] = await delegationProxy.influenceOfAt(accounts[2], miniMeToken.address, web3.eth.blockNumber)
+                influence[3] = await delegationProxy.influenceOfAt(accounts[3], miniMeToken.address, web3.eth.blockNumber)
+                influence[4] = await delegationProxy.influenceOfAt(accounts[4], miniMeToken.address, web3.eth.blockNumber)
+                influence[5] = await delegationProxy.influenceOfAt(accounts[5], miniMeToken.address, web3.eth.blockNumber)
                 
-                assert.equal(influence1.toNumber(), 0 * tokenBalance, "influenceOfAt(member1 is not as expected")
-                assert.equal(influence2.toNumber(), 0 * tokenBalance, "influenceOfAt(member2 is not as expected")
-                assert.equal(influence3.toNumber(), 0 * tokenBalance, "influenceOfAt(member3 is not as expected")
-                assert.equal(influence4.toNumber(), 0 * tokenBalance, "influenceOfAt(member4 is not as expected")
-                assert.equal(influence5.toNumber(), 0 * tokenBalance, "influenceOfAt(member5 is not as expected")
-                assert.equal(influence6.toNumber(), 6 * tokenBalance, "influenceOfAt(member6 is not as expected")
+                assert.equal(influence[0].toNumber(), 0 * tokenBalance, "influenceOfAt(accounts[0] is not as expected")
+                assert.equal(influence[1].toNumber(), 0 * tokenBalance, "influenceOfAt(accounts[1] is not as expected")
+                assert.equal(influence[2].toNumber(), 0 * tokenBalance, "influenceOfAt(accounts[2] is not as expected")
+                assert.equal(influence[3].toNumber(), 0 * tokenBalance, "influenceOfAt(accounts[3] is not as expected")
+                assert.equal(influence[4].toNumber(), 0 * tokenBalance, "influenceOfAt(accounts[4] is not as expected")
+                assert.equal(influence[5].toNumber(), 6 * tokenBalance, "influenceOfAt(accounts[5] is not as expected")
             })
         })
     })
