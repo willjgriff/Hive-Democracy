@@ -17,10 +17,12 @@ contract InfluenceToken is Controlled {
     MiniMeToken source;
 
     mapping (address => Input[]) inputs;
-    
+    mapping (address => uint) influenceObtained;
+
     struct Input {
         uint128 block;
         uint128 available; //could be replaced by turning `value` into int128
+        
     }
 
     /**
@@ -34,21 +36,32 @@ contract InfluenceToken is Controlled {
         startBlock = block.number;
     }
 
+    uint lagPhase        =    10000;
+    uint logPhase        =  1010000;
+    uint stationaryPhase =  2100000;
+
     /**
      * @notice Calculates the multiplier of tokens deposited in a dermined `blockn` block number
+     * TODO: change by cells life-span equation
      * @param blockn the number of block
      * @return the influence multipler
      */
     function influenceMultiliperAt(uint blockn) public constant returns (uint influence) {
         uint blockDiff = block.number - blockn;
-        influence += ((multiplier * blockDiff) / divisor);
+        if (blockDiff > lagPhase) {
+            influence = 1;
+        } else if (blockDiff > logPhase) {
+            influence = ((multiplier * blockDiff) / divisor);
+        } else {
+            influence = ((multiplier * stationaryPhase) / divisor);
+        }
+        
     }
 
     /**
      * @notice calculates the available influence of an address at current block.
-     * TODO: implement `balanceOfAt`
      */
-    function balanceOf(address _from) public constant returns (uint influence) {
+    function availableInfluenceOf(address _from) public constant returns (uint influence) {
         Input[] memory ins = inputs[_from];
         uint inslen = ins.length;
         if (inslen > 0) {
@@ -64,12 +77,13 @@ contract InfluenceToken is Controlled {
         }
         
     }
-
+    
 
     /**
-     * @dev consumes the oldest `_value` amount influence of `who`
+     * @dev consumes the oldest tokens that genereate the `_value` amount influence of `who`
      */
-    function consumeInfluence(address _who, uint _value) external onlyController {
+    function consumeInfluence(address _who, uint _value) public onlyController {
+        require(msg.sender == _who);
         Input[] storage ins = inputs[_who];
         uint pos = ins.length;
         uint consumed;
