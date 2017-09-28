@@ -10,52 +10,91 @@ import "../Controlled.sol";
  * This Token is used for Quadratic Voting of issues.
  */
 contract InfluenceToken is Controlled {
-
+ 
+    MiniMeToken public source;
+    uint public maxMultiplier; //max multiplier for tokens balance
+    uint public lagMaxMultiplier; //max multiplier for tokens balance in lag phase
+    uint public lagEnd; // end of period of slow influence grow
+    uint public logEnd; // end of period of fast influence grow
+    uint public stationaryEnd; // end of period of fixed maxMultiplier
+    uint public decreaseEnd; // end of period of decrese of multiplier
+    
+    uint public startTime;
     uint public startBlock;
-    uint public multiplier = 1;
-    uint public divisor = 1;
-    MiniMeToken source;
 
     mapping (address => Input[]) inputs;
-    mapping (address => uint) influenceObtained;
-
+    
     struct Input {
-        uint128 block;
-        uint128 available; //could be replaced by turning `value` into int128
-        
+        uint256 time;
+        uint128 available; 
     }
 
     /**
      * @notice requires to be created from controller of token
      *         this is important for the integrity of data in inputs array.
-     * @param _source Unchangable MiniMeToken source of balance to build influence from..
+     * @param _source Unchangable MiniMeToken source of balance to build influence from.
+     * @param _maxMultiplier Max multiplier for token balance
+     * @param _lagMaxMultipler Max multiplier in lagPeriod
+     * @param _lagLenght Lag phase time lenght
+     * @param _logLenght Log phase time lenght
+     * @param _stationaryLenght Stationary phase time lenght
+     * @param _decreaseLenght Decrease phase time lenght
      */
-    function InfluenceToken(MiniMeToken _source) public {
+    function InfluenceToken(
+        MiniMeToken _source,
+        uint _maxMultiplier,
+        uint _lagMaxMultipler,
+        uint _lagLenght,
+        uint _logLenght,
+        uint _stationaryLenght,
+        uint _decreaseLenght
+    ) 
+        public 
+    {
+        require(_maxMultiplier >= _lagMaxMultipler);
         require(_source.controller() == msg.sender);
         source = _source;
+        maxMultiplier = _maxMultiplier;
+        lagMaxMultiplier = _lagMaxMultipler;
+        startTime = block.timestamp;
         startBlock = block.number;
+        lagEnd = _lagLenght;
+        logEnd = _lagLenght + _logLenght;
+        stationaryEnd = _lagLenght + _logLenght + _stationaryLenght;
+        decreaseEnd = _lagLenght + _logLenght + _stationaryLenght + _decreaseLenght;
     }
-
-    uint lagPhase        =    10000;
-    uint logPhase        =  1010000;
-    uint stationaryPhase =  2100000;
-
+                           
     /**
-     * @notice Calculates the multiplier of tokens deposited in a dermined `blockn` block number
-     * TODO: change by cells life-span equation
-     * @param blockn the number of block
+     * @notice Calculates the multiplier of tokens deposited in a dermined `_dt` difference of time
+     * @param _dt the number of block
      * @return the influence multipler
      */
-    function influenceMultiliperAt(uint blockn) public constant returns (uint influence) {
-        uint blockDiff = block.number - blockn;
-        if (blockDiff > lagPhase) {
-            influence = 1;
-        } else if (blockDiff > logPhase) {
-            influence = ((multiplier * blockDiff) / divisor);
+    function influenceMultiliperAt(uint _dt) public constant returns (uint influence) {
+        if (_dt > decreaseEnd) {
+            _dt = _dt - decreaseEnd * ((_dt) / decreaseEnd);
+        }
+        if (_dt < lagEnd) {
+            return lagMultiplier(_dt);
+        } else if (_dt < logEnd) {
+            return logMultiplier(_dt);
+        } else if (_dt < stationaryEnd) {
+            return maxMultiplier;
         } else {
-            influence = ((multiplier * stationaryPhase) / divisor);
+            return decreaseMultiplier(_dt);
         }
         
+    }
+    
+    function lagMultiplier(uint _dt) private constant returns (uint) { 
+       return ((_dt ** 2 * 100000) / lagEnd ** 2) * (lagMaxMultiplier) / 100000;
+    }
+    
+    function logMultiplier(uint _dt) private constant returns (uint) { 
+        return (lagMaxMultiplier + (((_dt - lagEnd) ** 2 * 100000) / (logEnd - lagEnd) ** 2) * (maxMultiplier - lagMaxMultiplier) / 100000);
+    }
+
+    function decreaseMultiplier(uint _dt) private returns (uint) {
+        return maxMultiplier - (maxMultiplier * ((((_dt - stationaryEnd) ** 2 * 100000) / (decreaseEnd - stationaryEnd) ** 2) / 100000));
     }
 
     /**
@@ -69,11 +108,11 @@ contract InfluenceToken is Controlled {
                 Input memory _tx = ins[i];
                 uint available = _tx.available;
                 if (available > 0) {
-                    influence += influenceMultiliperAt(_tx.block) * _tx.available;
+                    influence += influenceMultiliperAt(_tx.time) * _tx.available;
                 }
             }
         } else { //load from previous balance
-            return influenceMultiliperAt(startBlock) * source.balanceOfAt(_from, startBlock);
+            return influenceMultiliperAt(startTime) * source.balanceOfAt(_from, startBlock);
         }
         
     }
@@ -83,14 +122,13 @@ contract InfluenceToken is Controlled {
      * @dev consumes the oldest tokens that genereate the `_value` amount influence of `who`
      */
     function consumeInfluence(address _who, uint _value) public onlyController {
-        require(msg.sender == _who);
         Input[] storage ins = inputs[_who];
         uint pos = ins.length;
         uint consumed;
         uint epochMultiplier;
         //consume from previous balance
         if (pos == 0) { 
-            epochMultiplier = influenceMultiliperAt(startBlock);
+            epochMultiplier = influenceMultiliperAt(startTime);
             consumed = epochMultiplier / _value;
 
             uint startBal = source.balanceOfAt(_who, startBlock);
@@ -99,7 +137,7 @@ contract InfluenceToken is Controlled {
             uint remaining = startBal - consumed;
             if (remaining > 0) {
                 ins.push(Input ({ 
-                    block: uint128(block.number),
+                    time: startTime,
                     available: uint128(remaining)
                 }));
             }
@@ -107,7 +145,7 @@ contract InfluenceToken is Controlled {
             uint required = _value;
             uint available;
             for (uint i = 0; i < pos; i++) {
-                epochMultiplier = influenceMultiliperAt(ins[i].block);
+                epochMultiplier = influenceMultiliperAt(ins[i].time);
                 available = ins[i].available;
                 if (available > 0) {
                     available = epochMultiplier * available;
@@ -126,9 +164,10 @@ contract InfluenceToken is Controlled {
             }
         }
 
+
     //resets the consumed tokens to current block to generate new influence
     ins.push(Input ({ 
-        block: uint128(block.number),
+        time: block.timestamp,
         available: uint128(consumed) 
     }));
 
@@ -151,7 +190,7 @@ contract InfluenceToken is Controlled {
         //clear tokens from previous balance
         if (pos == 0) { 
             ins.push(Input ({ 
-                block: uint128(block.number),
+                time: startTime,
                 available: uint128(source.balanceOfAt(_who, startBlock) - _value) 
             }));
         } else {
@@ -185,14 +224,14 @@ contract InfluenceToken is Controlled {
             uint startValue = source.balanceOfAt(_who, startBlock);
             if (startValue > 0) {
                 ins.push(Input ({ 
-                    block: uint128(startBlock),
+                    time: startTime,
                     available: uint128(startValue) 
                 }));        
             }
         }
         //store the new available balance
         ins.push(Input ({ 
-            block: uint128(block.number),
+            time: block.timestamp,
             available: uint128(_value) 
         }));
     }
