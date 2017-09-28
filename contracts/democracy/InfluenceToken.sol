@@ -25,7 +25,7 @@ contract InfluenceToken is Controlled {
     mapping (address => Input[]) inputs;
     
     struct Input {
-        uint256 time;
+        uint time;
         uint128 available; 
     }
 
@@ -69,7 +69,7 @@ contract InfluenceToken is Controlled {
      * @param _dt the number of block
      * @return the influence multipler
      */
-    function influenceMultiliperAt(uint _dt) public constant returns (uint influence) {
+    function influenceMultiplierAt(uint _dt) public constant returns (uint influence) {
         if (_dt > decreaseEnd) {
             _dt = _dt - decreaseEnd * ((_dt) / decreaseEnd);
         }
@@ -86,7 +86,7 @@ contract InfluenceToken is Controlled {
     }
     
     function lagMultiplier(uint _dt) private constant returns (uint) { 
-       return ((_dt ** 2 * 100000) / lagEnd ** 2) * (lagMaxMultiplier) / 100000;
+       return (((_dt ** 2 * 100000) / lagEnd ** 2) * lagMaxMultiplier) / 100000;
     }
     
     function logMultiplier(uint _dt) private constant returns (uint) { 
@@ -94,7 +94,7 @@ contract InfluenceToken is Controlled {
     }
 
     function decreaseMultiplier(uint _dt) private returns (uint) {
-        return maxMultiplier - (maxMultiplier * ((((_dt - stationaryEnd) ** 2 * 100000) / (decreaseEnd - stationaryEnd) ** 2) / 100000));
+        return maxMultiplier - (maxMultiplier * 100 * (((_dt - stationaryEnd) ** 2 * 100000) / (decreaseEnd - stationaryEnd) ** 2) / 100000)/100;
     }
 
     /**
@@ -108,11 +108,11 @@ contract InfluenceToken is Controlled {
                 Input memory _tx = ins[i];
                 uint available = _tx.available;
                 if (available > 0) {
-                    influence += influenceMultiliperAt(_tx.time) * _tx.available;
+                    influence += influenceMultiplierAt(_tx.time) * _tx.available;
                 }
             }
         } else { //load from previous balance
-            return influenceMultiliperAt(startTime) * source.balanceOfAt(_from, startBlock);
+            return influenceMultiplierAt(startTime) * source.balanceOfAt(_from, startBlock);
         }
         
     }
@@ -128,7 +128,7 @@ contract InfluenceToken is Controlled {
         uint epochMultiplier;
         //consume from previous balance
         if (pos == 0) { 
-            epochMultiplier = influenceMultiliperAt(startTime);
+            epochMultiplier = influenceMultiplierAt(startTime);
             consumed = epochMultiplier / _value;
 
             uint startBal = source.balanceOfAt(_who, startBlock);
@@ -145,7 +145,7 @@ contract InfluenceToken is Controlled {
             uint required = _value;
             uint available;
             for (uint i = 0; i < pos; i++) {
-                epochMultiplier = influenceMultiliperAt(ins[i].time);
+                epochMultiplier = influenceMultiplierAt(ins[i].time);
                 available = ins[i].available;
                 if (available > 0) {
                     available = epochMultiplier * available;
