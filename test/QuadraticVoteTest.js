@@ -1,6 +1,7 @@
 const MiniMeTokenFactory = artifacts.require("MiniMeTokenFactory.sol")
 const MiniMeToken = artifacts.require("MiniMeToken.sol")
 const QuadraticVote = artifacts.require("QuadraticVote.sol")
+const QuadraticVoteManager = artifacts.require("QuadraticVoteManager.sol")
 
 contract("QuadraticVote", accounts => {
 
@@ -59,5 +60,41 @@ contract("QuadraticVote", accounts => {
         })
     })
 
+    describe("availableQuadraticVotesOf(address _from)", () => {
+        let miniMeTokenFactory
+        let manager
+        let miniMeToken
+        let voteToken
+        let startTime
+        const tokensBalance = 1000
+
+        beforeEach(async () => {
+            miniMeTokenFactory = await MiniMeTokenFactory.new();
+            miniMeToken = await MiniMeToken.new(miniMeTokenFactory.address, 0, 0, "TestToken", 18, "TTN", true)
+            await miniMeToken.generateTokens(accounts[0], tokensBalance)
+            await miniMeToken.generateTokens(accounts[1], tokensBalance)
+            await miniMeToken.generateTokens(accounts[2], tokensBalance)
+            
+            manager = await QuadraticVoteManager.new(miniMeToken.address)
+            await miniMeToken.changeController(manager.address)
+            await manager.init(maxMultiplier, lagMaxMultiplier, lagLen, logLen, staLen, decLen)
+            voteToken = QuadraticVote.at(await manager.quadraticVote())
+            startTime = (await voteToken.startTime()).toNumber()
+  
+        })
+
+        it("returns correct quadratic votes", async () => {
+            let ret = (await voteToken.availableQuadraticVotesOf(accounts[0])).toNumber()
+            let block = await web3.eth.getBlock(web3.eth.blockNumber)
+            
+            assert.equal(
+                1000 * voteMultiplierAt(block.timestamp - startTime), 
+                ret,
+                voteToken.address+".availableQuadraticVotesOf("+accounts[0]+") is not as expected")
+      
+        })
+    })
+
+    
 })
 
