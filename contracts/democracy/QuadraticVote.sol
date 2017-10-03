@@ -4,18 +4,18 @@ import "../token/MiniMeToken.sol";
 import "../Controlled.sol";
 
 /**
- * @title InfluenceToken
+ * @title QuadraticVote
  * @author Ricardo Guilherme Schmidt (Status Research & Development GmbH)
- * Creates volatile influence based on a MiniMeToken balances not moved in accounts
+ * Creates volatile vote based on a MiniMeToken balances not moved in accounts
  * This Token is used for Quadratic Voting of issues.
  */
-contract InfluenceToken is Controlled {
+contract QuadraticVote is Controlled {
  
     MiniMeToken public source;
     uint public maxMultiplier; //max multiplier for tokens balance
     uint public lagMaxMultiplier; //max multiplier for tokens balance in lag phase
-    uint public lagEnd; // end of period of slow influence grow
-    uint public logEnd; // end of period of fast influence grow
+    uint public lagEnd; // end of period of slow vote grow
+    uint public logEnd; // end of period of fast vote grow
     uint public stationaryEnd; // end of period of fixed maxMultiplier
     uint public decreaseEnd; // end of period of decrese of multiplier
     
@@ -32,7 +32,7 @@ contract InfluenceToken is Controlled {
     /**
      * @notice requires to be created from controller of token
      *         this is important for the integrity of data in inputs array.
-     * @param _source Unchangable MiniMeToken source of balance to build influence from.
+     * @param _source Unchangable MiniMeToken source of balance to build vote from.
      * @param _maxMultiplier Max multiplier for token balance
      * @param _lagMaxMultipler Max multiplier in lagPeriod
      * @param _lagLenght Lag phase time lenght
@@ -40,7 +40,7 @@ contract InfluenceToken is Controlled {
      * @param _stationaryLenght Stationary phase time lenght
      * @param _decreaseLenght Decrease phase time lenght
      */
-    function InfluenceToken(
+    function QuadraticVote(
         MiniMeToken _source,
         uint _maxMultiplier,
         uint _lagMaxMultipler,
@@ -67,9 +67,9 @@ contract InfluenceToken is Controlled {
     /**
      * @notice Calculates the multiplier of tokens deposited in a dermined `_dt` difference of time
      * @param _dt the number of block
-     * @return the influence multipler
+     * @return the vote multipler
      */
-    function influenceMultiplierAt(uint _dt) public constant returns (uint influence) {
+    function voteMultiplierAt(uint _dt) public constant returns (uint vote) {
         if (_dt > decreaseEnd) {
             _dt = _dt - decreaseEnd * ((_dt) / decreaseEnd);
         }
@@ -98,9 +98,9 @@ contract InfluenceToken is Controlled {
     }
 
     /**
-     * @notice calculates the available influence of an address at current block.
+     * @notice calculates the available vote of an address at current block.
      */
-    function availableInfluenceOf(address _from) public constant returns (uint influence) {
+    function availableQuadraticVotesOf(address _from) public constant returns (uint votes) {
         Input[] memory ins = inputs[_from];
         uint inslen = ins.length;
         if (inslen > 0) {
@@ -108,27 +108,27 @@ contract InfluenceToken is Controlled {
                 Input memory _tx = ins[i];
                 uint available = _tx.available;
                 if (available > 0) {
-                    influence += influenceMultiplierAt(_tx.time) * _tx.available;
+                    votes += voteMultiplierAt(_tx.time) * _tx.available;
                 }
             }
         } else { //load from previous balance
-            return influenceMultiplierAt(startTime) * source.balanceOfAt(_from, startBlock);
+            return voteMultiplierAt(startTime) * source.balanceOfAt(_from, startBlock);
         }
         
     }
     
 
     /**
-     * @dev consumes the oldest tokens that genereate the `_value` amount influence of `who`
+     * @dev consumes the oldest tokens that genereate the `_value` amount vote of `who`
      */
-    function consumeInfluence(address _who, uint _value) public onlyController {
+    function consumeQuadraticVotes(address _who, uint _value) public onlyController {
         Input[] storage ins = inputs[_who];
         uint pos = ins.length;
         uint consumed;
         uint epochMultiplier;
         //consume from previous balance
         if (pos == 0) { 
-            epochMultiplier = influenceMultiplierAt(startTime);
+            epochMultiplier = voteMultiplierAt(startTime);
             consumed = epochMultiplier / _value;
 
             uint startBal = source.balanceOfAt(_who, startBlock);
@@ -145,7 +145,7 @@ contract InfluenceToken is Controlled {
             uint required = _value;
             uint available;
             for (uint i = 0; i < pos; i++) {
-                epochMultiplier = influenceMultiplierAt(ins[i].time);
+                epochMultiplier = voteMultiplierAt(ins[i].time);
                 available = ins[i].available;
                 if (available > 0) {
                     available = epochMultiplier * available;
@@ -165,7 +165,7 @@ contract InfluenceToken is Controlled {
         }
 
 
-    //resets the consumed tokens to current block to generate new influence
+    //resets the consumed tokens to current block to generate new vote
     ins.push(Input ({ 
         time: block.timestamp,
         available: uint128(consumed) 
@@ -214,7 +214,7 @@ contract InfluenceToken is Controlled {
     }
 
     /**
-     * @dev registers available influence source at current block
+     * @dev registers available vote source at current block
      **/
     function received(address _who, uint _value) private {
         Input[] storage ins = inputs[_who];

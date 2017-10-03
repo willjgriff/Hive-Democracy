@@ -1,8 +1,8 @@
 const MiniMeTokenFactory = artifacts.require("MiniMeTokenFactory.sol")
 const MiniMeToken = artifacts.require("MiniMeToken.sol")
-const InfluenceToken = artifacts.require("InfluenceToken.sol")
+const QuadraticVote = artifacts.require("QuadraticVote.sol")
 
-contract("InfluenceToken", accounts => {
+contract("QuadraticVote", accounts => {
 
     let miniMeTokenFactory, miniMeToken
     
@@ -13,16 +13,16 @@ contract("InfluenceToken", accounts => {
     const logLen = 30 * day;
     const staLen = 30 * day;
     const decLen = 30 * day;
-    const lagEnd        =  lagLen; // blocks influence don't grow
-    const logEnd        =  logLen + lagEnd; // blocks while influence grows fast
-    const stationaryEnd =  staLen + logEnd; // blocks while top influence is reached
+    const lagEnd        =  lagLen; // blocks vote don't grow
+    const logEnd        =  logLen + lagEnd; // blocks while vote grows fast
+    const stationaryEnd =  staLen + logEnd; // blocks while top vote is reached
     const decreaseEnd   =  decLen + stationaryEnd; 
 
     function evmDiv(value1,value2) {
          return Math.floor(value1/value2);
     }
 
-    function influenceMultiplierAt(_dt) {
+    function voteMultiplierAt(_dt) {
         if(_dt > decreaseEnd) {
             _dt = _dt - decreaseEnd * evmDiv(_dt, decreaseEnd);
         }
@@ -37,7 +37,7 @@ contract("InfluenceToken", accounts => {
         }
     }
 
-    describe("", () => {
+    describe("voteMultiplierAt(uint _dt)", () => {
         
         beforeEach(async () => {
             miniMeTokenFactory = await MiniMeTokenFactory.new();
@@ -49,15 +49,15 @@ contract("InfluenceToken", accounts => {
             
         })
 
-        it("Calculates the correct influence in period", async () => {
-            const influenceToken = await InfluenceToken.new(miniMeToken.address, maxMultiplier, lagMaxMultiplier, lagLen, logLen, staLen, decLen)
+        it("Calculates the correct vote in period", async () => {
+            const voteToken = await QuadraticVote.new(miniMeToken.address, maxMultiplier, lagMaxMultiplier, lagLen, logLen, staLen, decLen)
             for (var index = 0; index <= decreaseEnd; index += day) {
-                ret = await influenceToken.influenceMultiplierAt(index)
+                ret = await voteToken.voteMultiplierAt(index)
                 ret = ret.c[0]
-                assert.equal(ret, influenceMultiplierAt(index), "["+index/day+"] Wrong multiplier")
+                assert.equal(ret, voteMultiplierAt(index), "["+index/day+"] Wrong multiplier")
             }
         })
     })
-    
+
 })
 
