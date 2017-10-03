@@ -108,11 +108,11 @@ contract QuadraticVote is Controlled {
                 Input memory _tx = ins[i];
                 uint available = _tx.available;
                 if (available > 0) {
-                    votes += voteMultiplierAt(_tx.time) * _tx.available;
+                    votes += voteMultiplierAt(_tx.time - startTime) * _tx.available;
                 }
             }
         } else { //load from previous balance
-            return voteMultiplierAt(startTime) * source.balanceOfAt(_from, startBlock);
+            return voteMultiplierAt(block.timestamp - startTime) * source.balanceOfAt(_from, startBlock);
         }
         
     }
@@ -128,7 +128,7 @@ contract QuadraticVote is Controlled {
         uint epochMultiplier;
         //consume from previous balance
         if (pos == 0) { 
-            epochMultiplier = voteMultiplierAt(startTime);
+            epochMultiplier = voteMultiplierAt(block.timestamp - startTime);
             consumed = epochMultiplier / _value;
 
             uint startBal = source.balanceOfAt(_who, startBlock);
@@ -145,7 +145,7 @@ contract QuadraticVote is Controlled {
             uint required = _value;
             uint available;
             for (uint i = 0; i < pos; i++) {
-                epochMultiplier = voteMultiplierAt(ins[i].time);
+                epochMultiplier = voteMultiplierAt(ins[i].time - startTime);
                 available = ins[i].available;
                 if (available > 0) {
                     available = epochMultiplier * available;
