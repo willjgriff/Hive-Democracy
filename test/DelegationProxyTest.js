@@ -68,7 +68,150 @@ contract("DelegationProxy", accounts => {
             assert.equal(delegations[0].c, web3.eth.blockNumber, "["+i+","+j+"] Delegations block number is incorrect")
             assert.equal(delegations[1], delegateTo[i][j], "["+i+","+j+"] Delegations to account is incorrect")
         })
+
+        it("stores delegation checkpoints correctly", async () => {
+            const delegateTo2 = [
+                [
+                    0x0,
+                    accounts[0],
+                    accounts[0]
+                ],
+                [
+                    accounts[2],
+                    0x0,
+                    accounts[1]
+                ]
+            ]
+
+            const delegationOf2 = [
+                [
+                    accounts[0], 
+                    accounts[0], 
+                    accounts[0]
+                ],
+                [
+                    accounts[1], 
+                    accounts[1], 
+                    accounts[1]
+                ]
+            ]
+
+            const delegateTo3 = [
+                [
+                    0x0,
+                    0x0,
+                    0x0
+                ],
+                [
+                    0x0,
+                    0x0,
+                    0x0
+                ]
+            ]
+
+            const delegationOf3 = [
+                [
+                    accounts[0], 
+                    accounts[1], 
+                    accounts[2]
+                ],
+                [
+                    accounts[0], 
+                    accounts[1], 
+                    accounts[2]
+                ]
+            ]
+
+            for (var i = 0; i < delegateTo.length; i++) {
+                for (var j = 0; j < delegateTo[i].length; j++) {
+                    await delegationProxy[i].delegate(delegateTo[i][j], {from: accounts[j]});
+                }                    
+            }
+            const blockn1 = web3.eth.blockNumber
+            
+            for (var i = 0; i < delegateTo2.length; i++) {
+                for (var j = 0; j < delegateTo2[i].length; j++) {
+                    await delegationProxy[i].delegate(delegateTo2[i][j], {from: accounts[j]});                        
+                }                    
+            }
+            const blockn2 = web3.eth.blockNumber
+
+            for (var i = 0; i < delegateTo3.length; i++) {
+                for (var j = 0; j < delegateTo3[i].length; j++) {
+                    await delegationProxy[i].delegate(delegateTo3[i][j], {from: accounts[j]});     
+                }                    
+            }
+            const blockn3 = web3.eth.blockNumber
+
+            for (var i = 0; i < delegateTo.length; i++) {
+                for (var j = 0; j < delegateTo[i].length; j++) {        
+                    assert.equal(
+                        await delegationProxy[i].delegatedToAt(accounts[j], blockn1), 
+                        delegateTo[i][j], 
+                        "["+i+","+j+"] +"+delegationProxy[i].address+".delegatedToAt("+accounts[j]+", +"+blockn1+") is incorrect")
+                    assert.equal(
+                        await delegationProxy[i].delegatedToAt(accounts[j], blockn2), 
+                        delegateTo2[i][j], 
+                        "["+i+","+j+"] +"+delegationProxy[i].address+".delegatedToAt("+accounts[j]+", +"+blockn2+") is incorrect")
+                    assert.equal(
+                        await delegationProxy[i].delegatedToAt(accounts[j], blockn3), 
+                        delegateTo3[i][j], 
+                        "["+i+","+j+"] +"+delegationProxy[i].address+".delegatedToAt("+accounts[j]+", +"+blockn3+") is incorrect")
+
+                    assert.equal(
+                        await delegationProxy[i].delegationOfAt(accounts[j], blockn1), 
+                        delegationOf[i][j], 
+                        "["+i+","+j+"] +"+delegationProxy[i].address+".delegationOfAt("+accounts[j]+", +"+blockn1+") is incorrect")
+                    assert.equal(
+                        await delegationProxy[i].delegationOfAt(accounts[j], blockn2), 
+                        delegationOf2[i][j], 
+                        "["+i+","+j+"] +"+delegationProxy[i].address+".delegationOfAt("+accounts[j]+", +"+blockn2+") is incorrect")
+                    assert.equal(
+                        await delegationProxy[i].delegationOfAt(accounts[j], blockn3), 
+                        delegationOf3[i][j], 
+                        "["+i+","+j+"] +"+delegationProxy[i].address+".delegationOfAt("+accounts[j]+", +"+blockn3+") is incorrect")
+                }                    
+            }
+
+        })
+
+        it("delegates back to parentProxy", async () => {
+            for (var i = 0; i < delegateTo.length; i++) {
+                for (var j = 0; j < delegateTo[i].length; j++) {
+                    await delegationProxy[i].delegate(delegateTo[i][j], {from: accounts[j]});
+                }                    
+            }
+            const blockn1 = web3.eth.blockNumber
+
+            for (var j = 0; j < delegateTo[1].length; j++) {
+                await delegationProxy[1].delegate(delegationProxy[0].address, {from: accounts[j]});
+            }
+            
+            const blockn2 = web3.eth.blockNumber
+
+            for (var j = 0; j < delegateTo[1].length; j++) {        
+                assert.equal(
+                    await delegationProxy[1].delegatedToAt(accounts[j], blockn1), 
+                    delegateTo[1][j], 
+                    "["+j+"] +"+delegationProxy[1].address+".delegatedToAt("+accounts[j]+", +"+blockn1+") is incorrect")
+                assert.equal(
+                    await delegationProxy[1].delegatedToAt(accounts[j], blockn2), 
+                    delegateTo[0][j], 
+                    "["+j+"] +"+delegationProxy[1].address+".delegatedToAt("+accounts[j]+", +"+blockn2+") is incorrect")
+    
+                assert.equal(
+                    await delegationProxy[1].delegationOfAt(accounts[j], blockn1), 
+                    delegationOf[1][j], 
+                    "["+j+"] +"+delegationProxy[1].address+".delegationOfAt("+accounts[j]+", +"+blockn1+") is incorrect")
+                assert.equal(
+                    await delegationProxy[1].delegationOfAt(accounts[j], blockn2), 
+                    delegationOf[0][j], 
+                    "["+j+"] +"+delegationProxy[1].address+".delegationOfAt("+accounts[j]+", +"+blockn2+") is incorrect")
+                
+            }                    
+        })
     })
+
     describe("delegatedToAt(address _who, uint _block)", () => {
 
         it("returns correctly delegated to address", async () => {
@@ -99,11 +242,10 @@ contract("DelegationProxy", accounts => {
                     assert.equal(
                         await delegationProxy[i].delegationOfAt(accounts[j], web3.eth.blockNumber), 
                         delegationOf[i][j], 
-                        "delegationProxy["+i+"].delegationOfAt("+accounts[j]+", +"+web3.eth.blockNumber+") is incorrect"
+                        "["+i+","+j+"] +"+delegationProxy[i].address+".delegationOfAt("+accounts[j]+", +"+web3.eth.blockNumber+") is incorrect"
                     )
                 }                    
-            }
-            
+            }   
         })
     })
 
